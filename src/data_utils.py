@@ -1,6 +1,5 @@
 import pandas as pd
 import re
-# import json
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 
@@ -16,27 +15,16 @@ def _clean_text(text):
     text = re.sub(r"\s+", " ", text).strip()  # убираем дублирующиеся пробелы
     return text
 
-# def tokenize(text: str):
-#     # Простая токенизация: делим по пробелам после чистки
-#     if not text:
-#         return []
-#     return [t for t in text.split(" ") if t]
-
 def create_dataset_processed():
     # Построчное чтение (без CSV-парсера, чтобы не споткнуться о запятые в тексте)
     with open(RAW_PATH, "r", encoding="utf-8") as f:
-        lines = [line.strip() for line in f if line.strip()]  # убираем пустые
-
+        lines = [line.strip() for line in f if line.strip()] # убираем пустые строки
 
     cleaned = [_clean_text(line) for line in lines]
-    # tokens  = [tokenize(t) for t in cleaned]
-    # n_tokens = [len(ts) for ts in tokens]
 
     df = pd.DataFrame({
         "text_raw": lines, # исходная строка
         "text": cleaned, # очищенный текст
-        # "tokens": [json.dumps(ts, ensure_ascii=False) for ts in tokens], # токены в JSON
-        # "n_tokens": n_tokens, # число токенов
     })
 
     df.to_csv(PROCESSED_PATH, index=False)
@@ -63,4 +51,3 @@ def split_dataset():
 if __name__ == "__main__":
     create_dataset_processed()
     split_dataset()
-    
