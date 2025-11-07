@@ -1,3 +1,4 @@
+# Обработка датасета: очистка текста, разбиение на train/val/test
 import pandas as pd
 import re
 from pathlib import Path
@@ -28,7 +29,6 @@ def create_dataset_processed():
     })
 
     df.to_csv(PROCESSED_PATH, index=False)
-    print(f"[OK] Создан очищенный датасет {PROCESSED_PATH}, строк: {len(df)}")
     return len(df)
 
 def split_dataset():
@@ -45,7 +45,6 @@ def split_dataset():
     val_df.to_csv(DATA_DIR / "val.csv", index=False)
     test_df.to_csv(DATA_DIR / "test.csv", index=False)
 
-    print(f"[OK] Созданы тренировочная, валидационная, тестовая выборки: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
     return len(train_df), len(val_df), len(test_df)
 
 if __name__ == "__main__":

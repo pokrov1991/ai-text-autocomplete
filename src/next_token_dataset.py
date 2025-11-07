@@ -1,4 +1,4 @@
-
+# Код с torch Dataset'ом
 from __future__ import annotations
 from pathlib import Path
 from typing import List, Tuple
@@ -145,5 +145,4 @@ def create_loaders(
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
     test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
 
-    print(f"[OK] Созданы Dataset и DataLoader для обучения модели.")
     return (train_ds, val_ds, test_ds), (train_loader, val_loader, test_loader), tokenizer
