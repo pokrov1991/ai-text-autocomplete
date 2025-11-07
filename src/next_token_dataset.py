@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 import pandas as pd
 import torch
 
-def _read_texts(csv_path: Path):
+def _read_texts(csv_path):
     # Берем колонку 'text', иначе пробуем 'text_raw'
     df = pd.read_csv(csv_path)
     if "text" in df.columns:
@@ -50,7 +50,7 @@ class NextTokenDataset(Dataset):
         self.seq_len = int(seq_len)
         self.eos_id = _pick_eos_id(tokenizer) if add_eos else None
 
-        self.samples: List[Tuple[List[int], List[int]]] = []
+        self.samples = []
 
         for text in texts:
             # Токенизация без спец-токенов (EOS добавляем при условии)
@@ -77,7 +77,7 @@ class NextTokenDataset(Dataset):
     def __len__(self):
         return len(self.samples)
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx):
         x, y = self.samples[idx]
         return {
             "input_ids": torch.tensor(x, dtype=torch.long),
@@ -93,7 +93,7 @@ def _collate_shifted(batch, pad_id):
     """
     max_len = max(len(item["input_ids"]) for item in batch)
 
-    def pad(vec: torch.Tensor, value: int):
+    def pad(vec: torch.Tensor, value):
         out = torch.full((max_len,), value, dtype=vec.dtype)
         out[: len(vec)] = vec
         return out

@@ -2,24 +2,8 @@
 import torch
 import evaluate
 
-
 @torch.no_grad() # не нужно считать градиенты (ускоряем вычисления)
-def _generate_autocomplete(model, prefix_ids: torch.Tensor, need_len: int) -> torch.Tensor:
-    """
-    Метод пошагово дописывает токены к префиксу
-    Прогоняем весь префикс через модель, берём argmax последнего шага
-    """
-    model.eval()
-    seq = prefix_ids.clone()
-    for _ in range(need_len):
-        logits = model(seq.unsqueeze(0))             # [1, T, V]
-        next_tok = logits[:, -1, :].argmax(dim=-1)   # [1] выбираем токен с максимальной вероятностью
-        seq = torch.cat([seq, next_tok], dim=0)      # [T] + [1] -> [T+1] добавляем его в конец
-    return seq
-
-
-@torch.no_grad() # не нужно считать градиенты (ускоряем вычисления)
-def eval_rouge(model, data_loader, tokenizer, pad_id: int, max_batches: int = None):
+def eval_rouge(model, data_loader, tokenizer, pad_id, max_batches = None):
     """
     Сценарий 3/4 → 1/4: модель получает первые 3/4 токенов и дописывает последние 1/4
     Считаем ROUGE (rouge1, rouge2)
@@ -28,14 +12,14 @@ def eval_rouge(model, data_loader, tokenizer, pad_id: int, max_batches: int = No
     predictions, references = [], []
 
     device = next(model.parameters()).device
+    eos_id = getattr(tokenizer, "eos_token_id", None) or getattr(tokenizer, "sep_token_id", None)
 
     for bi, batch in enumerate(data_loader):
         if max_batches is not None and bi >= max_batches:
             break
 
         input_ids = batch["input_ids"].to(device)
-        mask = (input_ids != pad_id).long()
-        lens = mask.sum(dim=1)
+        lens = (input_ids != pad_id).long().sum(dim=1)
 
         for i in range(input_ids.size(0)):
             L = int(lens[i].item())
@@ -50,8 +34,8 @@ def eval_rouge(model, data_loader, tokenizer, pad_id: int, max_batches: int = No
             if need == 0:
                 continue
 
-            pred_full = _generate_autocomplete(model, prefix, need_len=need)
-            pred_tail = pred_full[-need:]
+            seq = model.generate(prefix, max_new_tokens=need, greedy=True, eos_token_id=eos_id, device=device)
+            pred_tail = seq[-need:] # берём только дополненную часть
 
             pred_text = tokenizer.decode(pred_tail.tolist(), skip_special_tokens=True)
             ref_text = tokenizer.decode(target.tolist(), skip_special_tokens=True)
@@ -60,12 +44,11 @@ def eval_rouge(model, data_loader, tokenizer, pad_id: int, max_batches: int = No
                 predictions.append(pred_text)
                 references.append(ref_text)
 
-    results = rouge.compute(predictions=predictions, references=references)
-    return results
+    return rouge.compute(predictions=predictions, references=references)
 
 
 @torch.no_grad() # не нужно считать градиенты (ускоряем вычисления)
-def autocomplete_examples(model, data_loader, tokenizer, pad_id: int, num_examples: int = 5):
+def autocomplete_examples(model, data_loader, tokenizer, pad_id, num_examples = 5):
     """
     Показываем примеры автодополнений (FULL / PREFIX / TARGET / PRED).
     """
@@ -87,7 +70,13 @@ def autocomplete_examples(model, data_loader, tokenizer, pad_id: int, num_exampl
             prefix, target = full[:split], full[split:]
             need = len(target)
 
-            pred_full = _generate_autocomplete(model, prefix, need_len=need)
+            pred_full = model.generate(
+                prefix,
+                max_new_tokens=need,
+                greedy=True,
+                eos_token_id=None,
+                device=device,
+            )
             pred_tail = pred_full[-need:]
 
             print("—" * 60)
